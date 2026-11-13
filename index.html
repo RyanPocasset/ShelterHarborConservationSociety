@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Interactive map of the Shelter Harbor Conservation Society lots and Shelter Harbor Fire District open space in Westerly, Rhode Island: forests, streams, wetlands, wildlife, geology and history. Produced by PPLT AGIKS, Pocasset Pokanoket Land Trust.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Shelter Harbor Conservation Lands">
+<meta property="og:description" content="Interactive map of the Shelter Harbor Conservation Society lots and Shelter Harbor Fire District open space in Westerly, Rhode Island: forests, streams, wetlands, wildlife, geology and history. Produced by PPLT AGIKS, Pocasset Pokanoket Land Trust.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232c6a4c'/%3E%3Cpath d='M14 44c8-2 10-10 18-12s12 4 18-2' fill='none' stroke='%23cfe8d9' stroke-width='5' stroke-linecap='round'/%3E%3Ccircle cx='22' cy='22' r='5' fill='%23f2f4f0'/%3E%3C/svg%3E">
+<title>Shelter Harbor Conservation Lands · PPLT AGIKS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="lib/leaflet.css">
+<style>
+/* Layout idea: same field-notebook sidebar as the WLT map (map left-to-right: panel, map); legends sit beside the toggles they explain, stories carry their own sources. */
+:root{
+  --paper:#f2f4f0; --panel:#ffffff; --ink:#1c2620; --muted:#5a6a61; --rule:#d5dbd3; --accent:#2c6a4c; --accent-ink:#ffffff; --mapbg:#dfe4dc; --warn:#8a5a00; --water:#2b6f99;
+  --f-display:"Newsreader",Georgia,"Times New Roman",serif;
+  --f-body:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--paper:#121815;--panel:#18201c;--ink:#e2e9e4;--muted:#9aaba1;--rule:#2d3a33;--accent:#7cc09b;--accent-ink:#0e1712;--mapbg:#1d2521;--warn:#e0b25c;--water:#7fb6dc;color-scheme:dark}
+}
+:root[data-theme="dark"]{--paper:#121815;--panel:#18201c;--ink:#e2e9e4;--muted:#9aaba1;--rule:#2d3a33;--accent:#7cc09b;--accent-ink:#0e1712;--mapbg:#1d2521;--warn:#e0b25c;--water:#7fb6dc;color-scheme:dark}
+html,body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);font:14px/1.45 var(--f-body)}
+.app{display:grid;grid-template-columns:380px 1fr;height:100%;position:relative}
+aside{background:var(--panel);border-right:1px solid var(--rule);overflow-y:auto;padding:16px 18px 28px;display:flex;flex-direction:column;gap:14px}
+h1{font:600 22px/1.15 var(--f-display);margin:0;text-wrap:balance}
+h2{font:600 15px/1.2 var(--f-display);margin:0 0 6px;letter-spacing:.01em;text-wrap:balance}
+h3{font:600 14px/1.25 var(--f-display);margin:0;text-wrap:balance}
+.sub{color:var(--muted);font-size:12.5px;margin-top:4px}
+section{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--rule);padding-top:12px}
+label{cursor:pointer}
+select,input[type=range]{width:100%}
+select{font:inherit;padding:6px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--ink)}
+select:focus-visible,input:focus-visible,button:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ctl{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button,.tabs button,.story button{font:500 12.5px var(--f-body);padding:5px 9px;border-radius:999px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);cursor:pointer}
+.seg button[aria-pressed="true"],.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--rule);padding-bottom:10px}
+.tabs button{font-weight:600;padding:6px 12px}
+details.grp{border-top:1px solid var(--rule);padding-top:10px}
+details.grp>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+details.grp>summary::-webkit-details-marker{display:none}
+details.grp>summary h2{margin:0}
+details.grp>summary .cnt{font-size:11.5px;color:var(--muted);white-space:nowrap}
+details.grp>summary::after{content:"+";font:600 15px var(--f-body);color:var(--muted)}
+details.grp[open]>summary::after{content:"–"}
+.gdesc{font-size:12.5px;color:var(--muted);margin:6px 0 8px;max-width:65ch}
+.lay{display:flex;flex-direction:column;gap:3px;margin-bottom:6px}
+.lay>label{display:flex;gap:8px;align-items:flex-start;font-weight:600}
+.lay>label input{margin-top:3px}
+.legend{display:grid;grid-template-columns:14px 1fr;gap:3px 8px;margin:2px 0 4px 24px;font-size:12.5px;color:var(--muted)}
+.sw{width:14px;height:12px;border-radius:2px;margin-top:3px;border:1px solid rgba(0,0,0,.15)}
+.dot{width:10px;height:10px;border-radius:50%;margin:4px 2px 0;border:1.5px solid #222}
+.line{height:0;border-top:3px solid;margin-top:8px;width:14px}
+.ramp{grid-column:1/-1;height:10px;border-radius:3px;border:1px solid rgba(0,0,0,.15)}
+.rampl{grid-column:1/-1;display:flex;justify-content:space-between;font-size:11.5px;font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:minmax(0,1fr) fit-content(46%);gap:3px 12px;font-size:13px;font-variant-numeric:tabular-nums}
+.stats .v{text-align:right;font-weight:600}
+.stats .w{grid-column:1/-1;color:var(--muted);font-size:12.5px}
+.stats .h{grid-column:1/-1;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;margin-top:6px;font-weight:600;text-align:left}
+.note{font-size:12.5px;color:var(--muted)}
+.note p{margin:0 0 8px;max-width:65ch}
+.flag{border-left:3px solid var(--warn);padding:6px 10px;background:color-mix(in srgb,var(--warn) 9%,transparent);font-size:12.5px;border-radius:0 6px 6px 0}
+.chip{display:inline-block;font:600 11px var(--f-body);padding:1px 7px;border-radius:999px;border:1px solid var(--rule);color:var(--muted);white-space:nowrap}
+.chip.ind{border-color:#8a5a00;color:#8a5a00}
+.chip.us{border-color:#2b6f99;color:#2b6f99}
+.chip.geo{border-color:#6b5b2b;color:#6b5b2b}
+.chip.eco{border-color:#2c6a4c;color:#2c6a4c}
+:root[data-theme="dark"] .chip.ind,:root[data-theme="dark"] .chip.geo{color:#e0b25c;border-color:#e0b25c}
+:root[data-theme="dark"] .chip.us{color:#7fb6dc;border-color:#7fb6dc}
+:root[data-theme="dark"] .chip.eco{color:#7cc09b;border-color:#7cc09b}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .chip.ind,:root:not([data-theme="light"]) .chip.geo{color:#e0b25c;border-color:#e0b25c}:root:not([data-theme="light"]) .chip.us{color:#7fb6dc;border-color:#7fb6dc}:root:not([data-theme="light"]) .chip.eco{color:#7cc09b;border-color:#7cc09b}}
+.story{border-top:1px solid var(--rule);padding-top:12px;display:flex;flex-direction:column;gap:6px}
+.story .meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.story p{margin:0;max-width:65ch;font-size:13.5px}
+.story ul.src{margin:2px 0 0 18px;padding:0;font-size:12px;color:var(--muted)}
+.story ul.src a{color:var(--muted)}
+.story button{align-self:flex-start}
+#map{height:100%;background:var(--mapbg)}
+#mapwrap{position:relative;height:100%;min-width:0}
+.maptools{position:absolute;top:10px;left:52px;z-index:1200;display:flex;gap:6px}
+.maptools button{font:600 12.5px var(--f-body);padding:6px 10px;border-radius:6px;border:1px solid rgba(0,0,0,.3);background:#fff;color:#1c2620;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.app.collapsed{grid-template-columns:1fr}
+.app.collapsed aside{display:none}
+.leaflet-container{font:13px var(--f-body);background:var(--mapbg)}
+.leaflet-popup-content{margin:10px 12px;min-width:240px;max-width:330px}
+.pp h3{font:600 14px var(--f-display);margin:0 0 4px;color:#1c2620}
+.pp p{margin:0 0 6px;font-size:12.5px;color:#1c2620}
+.pp table{border-collapse:collapse;font-size:12px;color:#1c2620}
+.pp td{padding:1px 6px 1px 0;vertical-align:top}
+.pp td:first-child{color:#5a6a61;white-space:nowrap}
+.pp .chip{color:#5a6a61}
+.plabel{font:600 11px var(--f-body);color:#1c2620;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap}
+.rlabel{font:italic 500 11px var(--f-body);color:#2b2b2b;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap}
+.hlabel{font:600 10.5px var(--f-body);color:#5b2a00;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap}
+.credit{font-size:12.5px;color:var(--muted);margin-top:6px;letter-spacing:.01em}
+.credit b{color:var(--ink);font-weight:650}
+.sbtn[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.sleg{margin:8px 0 2px}
+.wwlab{background:rgba(255,253,245,.92);border:1px solid #1c2620;border-radius:3px;font:600 11px var(--f-body);color:#1c2620;padding:1px 5px;white-space:nowrap}
+@media (max-width:820px){
+  .app,.app.collapsed{grid-template-columns:1fr}
+  aside{position:absolute;z-index:1100;top:0;left:0;bottom:0;width:min(380px,88vw);box-shadow:4px 0 18px rgba(0,0,0,.25)}
+  #mapwrap{grid-column:1}
+  .app:not(.collapsed) .maptools{position:fixed;left:calc(min(380px,88vw) + 10px)}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside id="side">
+  <header>
+    <h1>Shelter Harbor conservation lands: landscape, water, wildlife &amp; history</h1>
+    <div class="sub" id="hdrsub">Shelter Harbor Conservation Society lots and the Shelter Harbor Fire District open space they sit within, Westerly, RI. Leaf-off (Mar 2026) and leaf-on (Jul 2022) base map, May 1939 to 1997 aerials on the properties, and USGS 3DEP lidar flown 29 March 2022 (leaf-off). Field observations are from the PPLT field survey of 11 November 2026.</div>
+    <div class="credit">Produced by <b>PPLT AGIKS</b>, Pocasset Pokanoket Land Trust</div>
+  </header>
+  <nav class="tabs" role="tablist" aria-label="Panel sections">
+    <button type="button" role="tab" id="tb-map" aria-selected="true" aria-controls="tab-map">Map</button>
+    <button type="button" role="tab" id="tb-stories" aria-selected="false" aria-controls="tab-stories">Stories</button>
+  </nav>
+
+  <div id="tab-map" role="tabpanel" aria-labelledby="tb-map" style="display:flex;flex-direction:column;gap:14px">
+    <section aria-labelledby="h-prop">
+      <h2 id="h-prop">Property</h2>
+      <select id="prop" aria-label="Zoom to property"></select>
+      <div class="note" id="propnote"></div>
+      <div class="stats" id="stats"></div>
+    </section>
+
+    <section aria-labelledby="h-base">
+      <h2 id="h-base">Imagery</h2>
+      <div class="ctl" id="lbl-basemap">Base map</div>
+      <div class="seg" role="group" aria-labelledby="lbl-basemap" id="basemap"></div>
+      <div class="ctl" id="lbl-hist">On the properties</div>
+      <div class="seg" role="group" aria-labelledby="lbl-hist" id="hist"></div>
+      <label for="op" class="note">Fill opacity for mapped areas</label>
+      <input type="range" id="op" min="0" max="100" value="55">
+    </section>
+
+    <div id="groups"></div>
+  </div>
+
+  <div id="tab-stories" role="tabpanel" aria-labelledby="tb-stories" hidden style="flex-direction:column;gap:4px">
+    <div class="note"><p>Each story ties a piece of this ground to its people and its water. <b>Show on map</b> zooms there and turns on the layers it uses; press it again to turn them off. Sources are listed under each story.</p></div>
+    <div id="stories"></div>
+  </div>
+
+</aside>
+<div id="mapwrap"><div id="map" role="region" aria-label="Map of Shelter Harbor conservation lands"></div><div class="maptools"><button id="tgl" type="button" aria-controls="side" aria-expanded="true">Hide panel</button></div></div>
+</div>
+<script src="lib/leaflet.js"></script>
+<script src="data.js"></script>
+<script>
+(function(){
+const D=window.SHCS;
+const Q=new URLSearchParams(location.search);
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const fmt=v=>(Math.round(v*10)/10).toLocaleString();
+const fmt0=v=>Math.round(v).toLocaleString();
+const map=L.map('map',{preferCanvas:true,zoomSnap:0.25,maxZoom:20,minZoom:12.5});window._shcsMap=map;
+const canvas=L.canvas({padding:0.5,tolerance:6});
+map.attributionControl.setPrefix(false).addAttribution('Imagery: RIGIS (Mar 2026, Jul 2022); RI Statewide Planning / RIGIS aerials 1939–1997 · LiDAR: USGS 3DEP RI_Statewide_D22 · Parcels: Town of Westerly (2025) · Wetlands: USFWS NWI 2014, RIGIS 1988 · Soils: NRCS SSURGO via RIGIS · Geology, walls, roads, streams, land cover, conservation lands: RIGIS');
+[['pOv',150],['pTile',160],['pDet',170],['pHist',200],['pRaster',300]].forEach(([n,z])=>{const pn=map.createPane(n);pn.style.zIndex=z;pn.style.pointerEvents='none';});
+let OP=0.55;
+const app=document.querySelector('.app'), tgl=document.getElementById('tgl');
+function setPanel(open){app.classList.toggle('collapsed',!open);tgl.setAttribute('aria-expanded',String(open));tgl.textContent=open?'Hide panel':'Layers & info';setTimeout(()=>map.invalidateSize(),50);}
+tgl.addEventListener('click',()=>setPanel(app.classList.contains('collapsed')));
+setPanel(Q.get('panel')==='1'?true:(Q.get('panel')==='0'?false:!window.matchMedia('(max-width:820px)').matches));
+
+/* ---------- tabs ---------- */
+const TABS=['map','stories'];
+function setTab(t){TABS.forEach(k=>{const b=document.getElementById('tb-'+k),p=document.getElementById('tab-'+k);const on=k===t;b.setAttribute('aria-selected',on);p.hidden=!on;p.style.display=on?'flex':'none';});}
+TABS.forEach(k=>document.getElementById('tb-'+k).addEventListener('click',()=>setTab(k)));
+
+/* ---------- base imagery (lazy) ---------- */
+const B=D.img.base; const cache={};
+function ovl(key,e,pane){if(!cache[key])cache[key]=L.imageOverlay(e.f,e.b,{interactive:false,pane});return cache[key];}
+let curBase=['leafoff','leafon','none'].includes(Q.get('base'))?Q.get('base'):'leafoff';
+function refreshBase(){
+  const want=new Set(), z=map.getZoom(), vb=map.getBounds().pad(0.25);
+  if(curBase!=='none'){
+    want.add('ov_'+curBase);
+    if(z>=14.5)(B.tiles[curBase]||[]).forEach((t,i)=>{if(vb.intersects(L.latLngBounds(t.b)))want.add('t_'+curBase+'_'+i);});
+    if(z>=17.25&&curBase==='leafoff')B.detail.forEach((t,i)=>{if(vb.intersects(L.latLngBounds(t.b)))want.add('d_'+i);});
+  }
+  for(const k in cache){if(!want.has(k)&&map.hasLayer(cache[k]))map.removeLayer(cache[k]);}
+  want.forEach(k=>{let lay;
+    if(k.startsWith('ov_'))lay=ovl(k,B.overview[curBase],'pOv');
+    else if(k.startsWith('t_'))lay=ovl(k,B.tiles[curBase][+k.split('_')[2]],'pTile');
+    else lay=ovl(k,B.detail[+k.split('_')[1]],'pDet');
+    if(!map.hasLayer(lay))lay.addTo(map);});
+}
+map.on('moveend zoomend',refreshBase);
+const BASEMAPS=[['leafoff','Leaf-off · Mar 2026'],['leafon','Leaf-on · Jul 2022'],['none','None']];
+const bmEl=document.getElementById('basemap');
+BASEMAPS.forEach(([k,lab])=>{const b=document.createElement('button');b.type='button';b.textContent=lab;b.setAttribute('aria-pressed',k===curBase);
+  b.addEventListener('click',()=>{curBase=k;[...bmEl.children].forEach((x,i)=>x.setAttribute('aria-pressed',BASEMAPS[i][0]===k));refreshBase();});bmEl.appendChild(b);});
+
+/* ---------- historic imagery + lidar relief on the properties ---------- */
+const HIST=[['1939','May 1939'],['1951','1951–52'],['1962','1962 leaf-off'],['1972','1972'],['1997','1997'],['lidar','LiDAR relief'],['none','None']];
+const histGroups={};
+HIST.forEach(([k])=>{if(k==='none')return;histGroups[k]=L.layerGroup();
+  if(k==='lidar'){L.imageOverlay('lidar/relief.webp',D.lidar.relief,{interactive:false,pane:'pHist'}).addTo(histGroups[k]);return;}
+  (D.img.hist[k]||[]).forEach(e=>L.imageOverlay(e.f,e.b,{interactive:false,pane:'pHist'}).addTo(histGroups[k]));});
+let curHist=HIST.map(h=>h[0]).includes(Q.get('hist'))?Q.get('hist'):'none';
+const hEl=document.getElementById('hist');
+function setHist(k){curHist=k;for(const g in histGroups)map.removeLayer(histGroups[g]);if(histGroups[k])histGroups[k].addTo(map);
+  [...hEl.children].forEach((b,i)=>b.setAttribute('aria-pressed',HIST[i][0]===k));}
+HIST.forEach(([k,lab])=>{const b=document.createElement('button');b.type='button';b.textContent=lab;b.setAttribute('aria-pressed',k===curHist);b.addEventListener('click',()=>setHist(k));hEl.appendChild(b);});
+
+/* ---------- lookups ---------- */
+const SGCN='2015 RI SGCN · 2025 status pending — verify in RIWAP database (dem.ri.gov/riwap-database)';
+const NOTSGCN='Not on the 2015 RI SGCN list (Northern Waterthrush is) · 2025 status pending — verify in RIWAP database (dem.ri.gov/riwap-database)';
+const FT={1:['#2f6f8f','Deciduous swamp forest, seasonally flooded (red maple; NWI PFO1C, PFO1/SS1C)'],
+ 2:['#3f9d86','Deciduous swamp forest, saturated and seepage-fed (NWI PFO1B)'],
+ 3:['#93c4a2','Deciduous swamp forest, temporarily flooded edge (NWI PFO1A)'],
+ 4:['#b9d58f','Wet-mesic deciduous forest on poorly drained till, outside mapped wetland'],
+ 5:['#d6ad62','Upland deciduous forest (oak, hickory, beech) on better-drained loess over till'],
+ 6:['#173f2f','Conifer or evergreen canopy (white pine, red cedar, holly)'],
+ 7:['#9fc3d6','Shrub swamp or wet thicket (under 4 m)'],
+ 8:['#c79466','Upland shrubland or thicket (under 4 m)'],
+ 9:['#efe0a0','Herbaceous upland: grass, lawn edge, dune'],
+ 10:['#b9a3d6','Salt marsh and estuarine shore'],
+ 11:['#cfe6ec','Freshwater emergent marsh or wet meadow']};
+const BED={1:['#6aa3d8','Low-gradient swamp channel: slow, often braided flow over sand and organic muck (<0.5%)'],
+ 2:['#1f78b4','Riffle–run: gravel and cobble washed from stony till, sandy pools (0.5–2%)'],
+ 3:['#0b3d91','Step–riffle: cobble and boulder bed from the stony till, plunge pools (2–6%)'],
+ 4:['#6a1b9a','Steep seep run or step-pool, groundwater-fed (over 6%)'],
+ 5:['#7fa7a3','Tidal or pond-edge reach: sand and silt, brackish backwater']};
+const LW={1:1.2,2:2,3:3,4:4.6};
+function nwiDecode(a){a=String(a||'');const sys={P:'Palustrine',E:'Estuarine',M:'Marine',L:'Lacustrine',R:'Riverine'}[a[0]]||'';
+  const cls=[['FO1/SS1','Forested / scrub-shrub, broad-leaved deciduous'],['FO1','Forested, broad-leaved deciduous'],['FO4','Forested, needle-leaved evergreen'],['SS1','Scrub-shrub, broad-leaved deciduous'],['SS','Scrub-shrub'],['EM1','Emergent, persistent'],['EM','Emergent'],['UB','Unconsolidated bottom'],['US2','Unconsolidated shore, sand'],['US','Unconsolidated shore'],['AB','Aquatic bed']];
+  let c='';for(const [k,v] of cls){if(a.indexOf(k)>=1){c=v;break;}}
+  const reg={A:'temporarily flooded',B:'seasonally saturated',C:'seasonally flooded',E:'seasonally flooded / saturated',F:'semipermanently flooded',H:'permanently flooded',L:'subtidal',N:'regularly flooded (tidal)',P:'irregularly flooded (tidal)',K:'artificially flooded'};
+  const m=a.replace(/[dhx]$/,'').slice(-1);return [sys,c,reg[m]||''].filter(Boolean).join(' · ');}
+function nwiColor(a){a=String(a||'');if(a[0]==='E'||a[0]==='M')return '#b9a3d6';if(a.indexOf('SS')>0&&a.indexOf('FO')<0)return '#9fc3d6';if(a.indexOf('EM')>0)return '#cfe6ec';if(a.indexOf('UB')>0||a.indexOf('AB')>0)return '#2b6f99';
+  const m=a.slice(-1);return {C:'#2f6f8f',E:'#2f6f8f',B:'#3f9d86',A:'#93c4a2',F:'#235a75'}[m]||'#5f9fb3';}
+const DRAIN={'VPD':['#1f5f8b','Very poorly drained'],'PD and VPD':['#3f8fbf','Poorly and very poorly drained'],'PD':['#77b8d9','Poorly drained'],'SPD':['#b9dcc7','Somewhat poorly drained'],'MWD':['#e9e3a6','Moderately well drained'],'WD to MWD':['#ecd38a','Well to moderately well drained'],'WD':['#e7b56f','Well drained'],'ED':['#d98a3d','Excessively drained'],'SUBAQUIC':['#a9c7df','Subaqueous'],'VARIABLE':['#d0d0d0','Variable (beach, fill)']};
+const BEDROCK={'porphyritic granite':['#f2a7a7','Narragansett Pier Granite, porphyritic (Permian)'],'fine-grained granite':['#e07a8f','Narragansett Pier Granite, fine-grained facies (Permian)'],'Mamacoke Formation':['#a49fd0','Mamacoke Formation, Waterford Group (Late Proterozoic?)']};
+const GLAC={'TILL':['#b89b6a','Glacial till'],'OUTWASH':['#f0d17e','Glacial outwash (stratified sand and gravel)'],'MIXED':['#d8c49a','Till and outwash mixed']};
+const LU88={113:'Medium-density residential',114:'Medium-low density residential',115:'Low-density residential',120:'Commercial',141:'Roads',161:'Developed recreation',310:'Deciduous forest',330:'Mixed forest',400:'Brushland',500:'Water',600:'Wetland',710:'Beach',720:'Sandy area',999:'Unclassified'};
+function luColor(s){s=String(s).toLowerCase();if(s.includes('forest')||s==='310'||s==='330')return '#4f8f5a';if(s.includes('wetland')||s==='600')return '#5f9fb3';if(s.includes('brush')||s==='400'||s==='300')return '#c79466';if(s.includes('residential')||/^11/.test(s))return '#e39b9b';if(s.includes('commercial')||s==='120'||s.includes('road')||s==='141')return '#b56b6b';if(s.includes('recreation')||s==='161'||s.includes('transitional'))return '#e9cf7a';if(s.includes('beach')||s.includes('sand')||s==='710'||s==='720')return '#f1e6bf';if(s.includes('water')||s==='500')return '#2b6f99';return '#cccccc';}
+const SOILPT={WET:['#2b6f99','Wet spot'],IOW:['#5fb3d9','Intermittent open water (vernal pond)'],WAT:['#1f4f8b','Small pond'],BLD:['#5b2a86','Bouldery spot (boulders over 5 ft)'],STV:['#8e5cc0','Very stony spot'],ROC:['#6b5b2b','Bedrock outcrop'],DRY:['#d98a3d','Dry spot'],SAN:['#e9cf7a','Sandy spot'],FLU:['#9e9e9e','Fluid soil spot'],MAR:['#3f9d86','Marsh']};
+
+/* ---------- popups ---------- */
+function tbl(rows){return '<table>'+rows.filter(r=>r&&r[1]!==''&&r[1]!=null).map(([a,b])=>`<tr><td>${a}</td><td>${b}</td></tr>`).join('')+'</table>';}
+function pp(title,lead,rows,foot){return `<div class="pp"><h3>${title}</h3>${lead?`<p>${lead}</p>`:''}${rows?tbl(rows):''}${foot?`<p style="margin-top:6px">${foot}</p>`:''}</div>`;}
+const ashNote=o=>o.ash==='yes'?'<i>PPLT field survey, 11 Nov 2026: white ash confirmed in this parcel (Rossini Road woods).</i>':(o.ash==='no'?'<i>PPLT field survey, 11 Nov 2026: white ash was not found along the western brook in the greenbelt.</i>':'');
+
+/* ---------- layer builders ---------- */
+const LAY={};
+function poly(fc,styleFn,popFn,opts={}){return L.geoJSON(fc,{renderer:canvas,filter:opts.filter,
+  style:f=>Object.assign({weight:0.6,color:'rgba(0,0,0,.35)',fillOpacity:OP},styleFn(f.properties,f)),
+  onEachFeature:(f,l)=>{if(popFn)l.bindPopup(()=>popFn(f.properties,l));}});}
+function pts(fc,ptFn,popFn,opts={}){return L.geoJSON(fc,{filter:opts.filter,pointToLayer:(f,ll)=>ptFn(f.properties,ll),onEachFeature:(f,l)=>{if(popFn)l.bindPopup(()=>popFn(f.properties,l));}});}
+const fillKeys=new Set();
+function regFill(k){fillKeys.add(k);}
+
+LAY.ftype=poly(D.forest_type,o=>({fillColor:FT[o.code][0],weight:0.3,color:'rgba(0,0,0,.25)'}),(o,l)=>pp('Forest type by hydrology',FT[o.code][1],[['Patch',fmt(o.area_ac)+' ac']],ashNote(o)));regFill('ftype');
+LAY.evergreen=poly(D.evergreen,o=>({fillColor:o.code===2?'#173f2f':'#7fd16a',weight:0.4,color:o.code===2?'#0b2a1f':'#3c8a32',fillOpacity:Math.min(1,OP+0.25)}),o=>pp(o.code===2?'Conifer / evergreen canopy':'Deciduous canopy over evergreen understory',o.code===2?'Green in the leaf-off photos and dense to lidar above 6 m: white pine, red cedar or holly.':'Green shows through a leafless canopy that lidar sees as open: likely mountain laurel, greenbrier or holly beneath oaks and maples.',null));regFill('evergreen');
+LAY.chm=L.imageOverlay('lidar/chm.webp',D.lidar.chm,{pane:'pRaster',opacity:0.85,interactive:false});
+LAY.struct=L.imageOverlay('lidar/struct.webp',D.lidar.struct,{pane:'pRaster',opacity:0.85,interactive:false});
+LAY.rem=L.imageOverlay('lidar/rem.webp',D.lidar.rem,{pane:'pRaster',opacity:0.9,interactive:false});
+
+/* stand metrics grid */
+const GM={h95:{lab:'Canopy height, 95th percentile (m)',br:[14,18,20,22,24,26],cols:['#f2f0d8','#d6e6b0','#a9d18e','#6db27a','#3a8a5c','#1d6447','#0d3f30'],fmt:v=>fmt(v)+' m'},
+ stems:{lab:'Canopy treetops per hectare (lidar, ≥5 m)',br:[200,250,300,350,400,450],cols:['#fff5eb','#fdd8b3','#fdb27b','#f68a47','#e15d1b','#b23c0a','#7a2504'],fmt:v=>fmt0(v)+' /ha'},
+ big:{lab:'Trees ≥20 m tall per hectare',br:[50,100,150,200,250,300],cols:['#f7fbff','#d6e6f4','#abd0e6','#6aaed6','#3787c0','#105ba4','#08306b'],fmt:v=>fmt0(v)+' /ha'},
+ woody:{lab:'Basal density index: % of leaf-off returns from stems and branches',br:[30,32,34,36,38,40],cols:['#fbf3e4','#efd9b0','#dfba7f','#c99752','#a8743a','#7d5228','#4f3218'],fmt:v=>fmt(v)+'%'},
+ under:{lab:'Understory density: % of low returns at 0.5–3 m',br:[5,8,11,15,20,25],cols:['#fcfbfd','#e5e3f0','#c7c4e0','#a39fcb','#807ab5','#62489c','#3f1d7a'],fmt:v=>fmt(v)+'%'},
+ micro:{lab:'Microrelief: ground roughness at 10 m scale (cm)',br:[4,5,6,7,9,12],cols:['#fff7ec','#fee3c0','#fdc58c','#fc9a59','#ef6a36','#d23a1d','#9b1d0f'],fmt:v=>fmt(v)+' cm'}};
+let gmet='h95';
+const gcol=v=>{const m=GM[gmet];let i=0;while(i<m.br.length&&v>=m.br[i])i++;return m.cols[i];};
+LAY.grid=L.geoJSON(D.grid,{renderer:canvas,filter:f=>f.properties.cover>=50||gmet==='micro',
+  style:f=>({weight:0.2,color:'rgba(0,0,0,.25)',fillColor:gcol(f.properties[gmet]),fillOpacity:Math.min(0.9,OP+0.25)}),
+  onEachFeature:(f,l)=>l.bindPopup(()=>{const o=f.properties;return pp('Lidar stand metrics, 20 m cell','Leaf-off USGS lidar, 29 March 2022.',[['Canopy height p95',fmt(o.h95)+' m'],['Mean height of canopy ≥5 m',fmt(o.hmean)+' m'],['Canopy cover ≥5 m',o.cover+'%'],['Canopy treetops',fmt0(o.stems)+' /ha'],['Trees ≥20 m',fmt0(o.big)+' /ha'],['Basal density index',fmt(o.woody)+'% (rank '+o.woody_rank+' of 100)'],['Understory density',fmt(o.under)+'%'],['Microrelief',fmt(o.micro)+' cm'],['Shrub / herb ground',o.shrub+'% / '+o.herb+'%']]);})});
+regFill('grid');
+
+LAY.f39=poly(D.fields1939,o=>({fillColor:'#f1d77a',color:'#8a6d00',weight:1.6,dashArray:'5 3'}),o=>pp(o.name,o.note,null,'Photo-interpreted by eye from the May 1939 frame; edges approximate.'));regFill('f39');
+LAY.walls=L.geoJSON(D.walls,{renderer:canvas,style:f=>({color:f.properties.inside?'#5b2a00':'#8b6b4a',weight:f.properties.inside?2.6:1.6,opacity:0.95}),onEachFeature:(f,l)=>l.bindPopup(pp('Stone wall','RIGIS statewide stone wall map. Walls mark farm-era field and woodlot divisions; '+(f.properties.inside?'this one runs inside the conservation land.':'this one is near it.')))});
+LAY.lu88=poly(D.lu1988,o=>({fillColor:luColor(o.CODE),weight:0.4}),o=>pp('Land cover 1988 (RIGIS)',LU88[o.CODE]||String(o.CODE)));regFill('lu88');
+LAY.lu11=poly(D.lu2011,o=>({fillColor:luColor(o.Descr_2011),weight:0.4}),o=>pp('Land cover 2011 (RIGIS)',esc(o.Descr_2011)));regFill('lu11');
+
+LAY.reaches=L.geoJSON(D.reaches,{renderer:canvas,style:f=>{const o=f.properties;return {color:BED[o.bc][0],weight:LW[o.lw]+(o.on_property?0.6:0),opacity:o.on_property?1:0.55,dashArray:o.lw===1?'4 3':null};},
+  onEachFeature:(f,l)=>l.bindPopup(()=>{const o=f.properties;return pp(esc(o.name==='Unnamed channel'?'Unnamed channel (lidar)':o.name),BED[o.bc][1]+(o.flat?'. Here it spreads across a flat swamp floor.':'.'),
+   [['Flow (from catchment)',o.flow],['Gradient',fmt(o.grad_pct)+'%'],['Catchment',fmt(o.catch_ha)+' ha'],['Channel width / depth',o.xs_width_m!=null?(o.xs_width_m>12?'diffuse, >12 m':fmt(o.xs_width_m)+' m')+' / '+(o.xs_depth_m!=null?fmt(Math.max(o.xs_depth_m,0))+' m':''):''],['Canopy over channel',o.canopy+'%'],['Bed roughness (lidar)',o.bed_rms!=null?fmt(o.bed_rms)+' m RMS'+(o.bed_rms>=0.2?' · rough, bouldery':o.bed_rms<0.1?' · smooth':''):''],['Boulders in or at the bed (±4 m)',o.nb!=null?o.nb+(o.nbl?` (${o.nbl} large)`:''):''],['RIDEM designation',o.coldwarm==='Cold'?'Cold-water (RI0010043R-05)':(o.coldwarm||'')],['Louisiana Waterthrush potential',o.lowa]],'Bed character is inferred from lidar gradient and the soil parent material, not walked. Bed roughness is the scatter of the lidar bed-and-boulder surface around the reach’s slope; boulders under water or below about 0.5 m are missed.');})});
+LAY.rist=L.geoJSON(D.streams_ri,{renderer:canvas,style:f=>({color:f.properties.ColdWarm==='Cold'?'#00a6d6':'#8aa0b2',weight:f.properties.ColdWarm==='Cold'?5:3,opacity:0.55}),onEachFeature:(f,l)=>l.bindPopup(()=>{const o=f.properties;return pp(esc(o.NAME),esc(o.WBDesc),[['Water body ID',esc(o.WBID)],['Cold / warm',esc(o.ColdWarm)],['Water quality class',esc(o.WQS_1)],['Stream order',o.Strm_Ordr]],'RIGIS Rivers and Streams (1:24,000), RIDEM water quality attributes.');})});
+const SPC={Probable:'#00a6d6',Possible:'#9fd7ea'};
+LAY.springs=pts(D.springs,(o,ll)=>L.circleMarker(ll,{renderer:canvas,radius:o.conf==='Probable'?6:4.5,color:'#06425a',weight:1.6,fillColor:SPC[o.conf],fillOpacity:1}),o=>pp(o.conf+' spring or seep head','Upper end of a lidar-traced channel at the foot of a slope, '+(o.to_wetland_m<1?'inside':'near')+' mapped wetland. Ridgebury–Whitman–Leicester till is wet because groundwater seeps out of it, so channel heads on it often start at seeps.',[['Soil',esc(o.soil)],['Slope above / below',fmt(o.slope_above_deg)+'° / '+fmt(o.slope_below_deg)+'°'],['To mapped wetland',fmt(o.to_wetland_m)+' m'],['Elevation',fmt(o.z)+' m NAVD88']],'Unverified. Check flow, water temperature and iron staining in late summer.'));
+LAY.nwi=poly(D.nwi,o=>({fillColor:nwiColor(o.ATTRIBUTE),weight:0.6}),o=>pp('Wetland (NWI 2014): '+esc(o.ATTRIBUTE),nwiDecode(o.ATTRIBUTE)));regFill('nwi');
+LAY.ws=L.geoJSON(D.watersheds,{renderer:canvas,style:{color:'#2b6f99',weight:2,dashArray:'8 5',fill:false},onEachFeature:(f,l)=>l.bindPopup(pp(esc(f.properties.name),'Delineated from the 2022 RIGIS lidar DEM at 2 m.',[['Area',fmt0(f.properties.area_ac)+' ac']]))});
+
+const OBSC={'Eastern Towhee':'#c0392b','Pileated Woodpecker':'#7b241c'};
+LAY.obs=L.geoJSON(D.obs,{renderer:canvas,style:f=>({color:OBSC[f.properties.sp],weight:2.4,dashArray:'6 4',fillColor:OBSC[f.properties.sp],fillOpacity:0.12}),
+  onEachFeature:(f,l)=>{const o=f.properties;l.bindPopup(pp(o.sp+' (detected)',esc(o.note),[['Status',SGCN]]));l.bindTooltip(o.sp,{permanent:false,direction:'top'});}});
+LAY.lowa=L.geoJSON(D.reaches,{renderer:canvas,filter:f=>f.properties.lowa!=='Low',style:f=>({color:f.properties.lowa==='High'?'#e67e22':'#f5c28a',weight:f.properties.lowa==='High'?6:4,opacity:0.85}),
+  onEachFeature:(f,l)=>l.bindPopup(pp('Louisiana Waterthrush stream potential: '+f.properties.lowa,'Shaded, flowing headwater with riffles: canopy over 70%, gradient at least 1% and enough catchment to hold water in June (High), or a weaker version of that (Moderate).',[['Gradient',fmt(f.properties.grad_pct)+'%'],['Catchment',fmt(f.properties.catch_ha)+' ha'],['Canopy',f.properties.canopy+'%'],['Status',NOTSGCN]]))});
+LAY.trout=L.geoJSON(D.reaches,{renderer:canvas,filter:f=>!!f.properties.trout,style:{color:'#00a6d6',weight:7,opacity:0.7},onEachFeature:(f,l)=>l.bindPopup(pp('Coldwater reach (brook trout potential)','RIDEM rates Quonochontaug Brook cold water. These reaches are shaded and perennial by catchment size; seep-fed heads along the valley wall keep summer temperatures down. The PPLT field survey of 11 November 2026 noted a cold spring here that could hold trout and draw wood turtles.',[['Brook trout status',SGCN]]))});
+LAY.wturt=poly(D.woodturtle,o=>({fillColor:'#8e6c3a',color:'#5e4520',weight:1.2,dashArray:'3 3'}),o=>pp('Wood turtle corridor (potential)','Perennial brook reaches with a 60 m upland band for basking and foraging. The brook is small and nesting sand is scarce, so treat this as marginal until surveyed.',[['Status',SGCN]]));regFill('wturt');
+const PC={High:['#0b6e69','#06403d'],Moderate:['#2ec4b6','#178a80'],Low:['#bfeee8','#5fa9a0']};
+LAY.sturt=poly(D.spotted,o=>({fillColor:PC[o.cls][0],color:PC[o.cls][1],weight:1.4,fillOpacity:Math.min(1,OP+0.3)}),o=>pp('Spring pool · spotted turtle potential: '+o.cls,'Standing water in the March 2026 leaf-off photo: dark, flat, smooth-surfaced patches in a topographic low, away from buildings and roads. '+(o.support==='2026 photo only'?'Only the 2026 photo shows water here, so it may be a shadow or a wet year.':'Other spring dates also show water here, so it holds water most springs.')+(o.on_prop?'':' Outside the conservation land; shown for connectivity.'),
+  [['Area',fmt0(o.area)+' m²'],['Water seen in',esc(o.support)],['Canopy over pool and 3 m rim',fmt0(o.canopy_pct)+'%'+(o.canopy_pct<50?' · sunny for basking':o.canopy_pct<75?' · partly sunny':' · shaded')],['Other pools within 250 m',o.n250],['To nearest road',fmt0(o.d_road)+' m'],['To nearest stream channel',fmt0(o.d_brook)+' m'],['Wetland (NWI)',o.nwi_?esc(o.nwi_)+' · '+nwiDecode(o.nwi_):'not in mapped wetland'],['Soil',esc(o.soil)],['Score',o.score+' / 105'],['Status',SGCN]],
+  'Spotted turtles bask and feed in shallow, sunny pools in March–June, move among them, and are killed on roads. They are known from swamps elsewhere in the salt-pond watersheds; locations are withheld.'));regFill('sturt');
+LAY.mature=poly(D.mature,o=>({fillColor:'#4a235a',color:'#2e1538',weight:1}),o=>pp('Mature canopy, 24 m and taller','20 m cells where the 95th-percentile canopy height reaches 24 m with at least 80% cover: big-tree foraging and cavity habitat for Pileated Woodpecker.',[['Pileated Woodpecker status',SGCN]]));regFill('mature');
+LAY.nha=poly(D.nha,o=>({fillColor:'#d35400',color:'#a04000',weight:1.2,dashArray:'2 4'}),o=>pp('RIDEM Natural Heritage Area','Generalized area flagged by RIDEM for rare species or natural communities. Contact the RI Natural Heritage Program for detail.'));regFill('nha');
+
+LAY.bedrock=poly(D.bedrock,o=>{const b=BEDROCK[o.UNIT];return {fillColor:b?b[0]:'#e0e0e0',weight:0.6,fillOpacity:b?OP:0};},o=>pp('Bedrock: '+esc((BEDROCK[o.UNIT]||[0,o.UNIT])[1]),'',[['Map unit',esc(o.UNIT_LABEL)],['Suite / group',esc(o.GROUP_SUIT)],['Age',esc(o.AGE)],['Terrane',esc([o.TERRANE,o.SUBTERRANE].filter(s=>s&&s.trim()).join(' / '))]],o.UNIT==='porphyritic granite'?'The Narragansett Pier Granite is an Early Permian batholith, about 5 by 40 km, under the south coast; Westerly Granite dikes belong to the same suite.':''));regFill('bedrock');
+LAY.glacial=poly(D.glacial,o=>({fillColor:(GLAC[o.FEATURE]||['#ccc'])[0],weight:0.6}),o=>pp('Glacial deposit: '+esc((GLAC[o.FEATURE]||[0,o.FEATURE])[1]),'The Charlestown recessional moraine runs along Route 1 just north of these properties; south of it lie lodgement till, outwash and the barrier sands.'));regFill('glacial');
+LAY.soils=poly(D.soils,o=>({fillColor:(DRAIN[o.DRAINAGE]||['#ccc'])[0],weight:0.5}),o=>pp(esc(o.MUNAME),'',[['Map unit',esc(o.MUSYM)],['Drainage',(DRAIN[o.DRAINAGE]||[0,o.DRAINAGE])[1]],['Parent material',esc(o.PARENT_M)],['Hydric',o.HYDRIC==='Y'?'yes':'no'],['Water table',esc(o.ESHWT)],['Limits',esc(o.RESTRICT_)]]));regFill('soils');
+LAY.soilpts=pts(D.soilpts,(o,ll)=>L.circleMarker(ll,{renderer:canvas,radius:5,color:'#222',weight:1.2,fillColor:(SOILPT[o.FEATSYM]||['#999'])[0],fillOpacity:1}),o=>pp('Soil survey spot: '+esc(o.FEAT_NAME),esc(o.FEAT_DESC)));
+
+const bSym=(o,ll)=>L.circleMarker(ll,{renderer:canvas,radius:o.lg?5.5:3.2,color:o.inbed?'#00a6d6':'#fff',weight:o.inbed?2.2:1.2,fillColor:o.lg?'#5b2a86':'#9b7bc4',fillOpacity:1});
+const bPop=o=>pp(o.lg?'Large boulder or glacial erratic':'Boulder',(o.inbed?'In or at the edge of the stream bed. ':'')+'An opaque, smooth, dome-shaped object standing above the lidar ground surface: pulses that hit it return no ground echo beneath, the signature of rock rather than shrubs. Could also be a stump, root plate or rock pile; field check.',[['Height above ground',fmt(o.h)+' m'],['Across (equivalent)',fmt(o.d)+' m']]);
+const bLarge=pts(D.boulders,bSym,bPop,{filter:f=>f.properties.lg}), bSmall=pts(D.boulders,bSym,bPop,{filter:f=>!f.properties.lg});
+LAY.boulders=L.featureGroup([bLarge]);
+function bz(){if(map.hasLayer(LAY.boulders)&&map.getZoom()>=16.75){if(!LAY.boulders.hasLayer(bSmall))LAY.boulders.addLayer(bSmall);}else if(LAY.boulders.hasLayer(bSmall))LAY.boulders.removeLayer(bSmall);}
+map.on('zoomend',bz);
+LAY.bfields=poly(D.bfields,o=>({fillColor:'#7d5ba6',color:'#4b2c74',weight:1.2,dashArray:'4 3'}),o=>pp('Boulder field (glacial lag)','Patch where the lidar finds boulders at roughly six times the median density of these woods: the stony lodgement till left by the ice, washed of fines along slopes and brooks.',[['Boulders',o.n+(o.n_large?` (${o.n_large} large)`:'')],['Density',fmt0(o.dens)+' per ha'],['Area',fmt0(o.area_m2)+' m²']]));regFill('bfields');
+
+LAY.tipups=pts(D.tipups,(o,ll)=>L.circleMarker(ll,{renderer:canvas,radius:3.2,color:'#6b5b2b',weight:1,fillColor:'#c2a878',fillOpacity:0.9}),o=>pp('Windthrow pit-and-mound','Mound with a pit beside it: the root plate of a tree that blew over. These survive only where the ground was never plowed, and they record storms such as the 1938 hurricane.',[['Mound height',fmt(o.h_rel)+' m'],['Pit depth',fmt(-o.pit)+' m']]));
+
+LAY.cem=pts(D.cemeteries,(o,ll)=>L.marker(ll,{icon:L.divIcon({className:'',html:`<div style="width:12px;height:12px;background:${o.verified?'#5b2a00':'#fff'};border:2px solid #5b2a00;transform:rotate(45deg)"></div>`,iconSize:[12,12],iconAnchor:[6,6]})}),o=>pp(esc(o.NAME),'Rhode Island historical cemetery '+esc(o.label)+(o.verified?'':' · location not verified by the cemetery commission')+'.',[['Note',esc(o.COMMENTS&&o.COMMENTS.trim())]],{'Freebody Lot':'Andrew Freebody and his sister Sally owned this farm before Oliver Davis. Denison found the burying ground in 1867–68 in a pasture near a grove, about 80 rods southeast of the Davis house, with one barely legible stone.','Reverend Joseph Park Family Lot':'Joseph Park was minister of the Westerly Congregational church from 1733 to 1777. Dozens of Narragansett people joined his church in the early 1740s before founding their own congregation about 1749.','Joseph Stanton Jr Lot':'Stanton family lot; Thomas Stanton opened a trading post at Quonochontaug in 1659.','Champlin Lot':'Champlin family lot; Jeffrey Champlin was one of the first Misquamicut settlers.','Champlin-Wilcox':'Champlin family burials.'}[o.NAME]||''));
+const HPC={ind:'#8a5a00',us:'#2b6f99'};
+LAY.hist=pts(D.hist_pts,(o,ll)=>L.marker(ll,{icon:L.divIcon({className:'',html:`<div style="width:14px;height:14px;border-radius:50%;background:${HPC[o.kind]};border:2px solid #fff;box-shadow:0 0 0 1.5px ${HPC[o.kind]}"></div>`,iconSize:[14,14],iconAnchor:[7,7]})}),o=>pp(esc(o.name),(STORY_BY_PT[o.id]||''),null,(o.approx?'Label placed on the general area, not a surveyed site. ':'')+`<a href="#" data-story="${o.id}">Open the story</a>`));
+const WWTXT={
+ reservoir:['Dug basin: reservoir (candidate)','A flat-floored basin at the junction of two branches, about 10–13 m across, with steep walls 0.8–1.3 m high on its north and southwest sides and a level floor near 13.9 m. Its floor is far flatter than the brook above and below it, and the north wall drops in a near-vertical step, which reads as dug and probably faced with stone. The PPLT field survey of 11 November 2026 recorded a square, dug-out reservoir about 8 m wide behind the Spears-Nardone Bridge; this basin is the best lidar match on the brook. A dark, sharp-edged patch here in the May 1939 photo is consistent with open water.'],
+ bridge:['Spears-Nardone Bridge (approximate location)','A large stone bridge on the brook, built by Samuel Nardone in a business partnership with Narragansett stonemasons of the Spears family, with a dug-out reservoir behind it; recorded on the PPLT field survey of 11 November 2026. Placed at the outlet of the dug basin, where the brook leaves it through a narrow, straight slot. The 2022 lidar cannot tell a bridge deck from the water surface in the pool beneath it, so this point is approximate, within about 15 m.'],
+ pump:['Pump house relic (candidate)','The probable water line starts at the basin’s northeast corner, beside a near-vertical 0.9 m step in the ground model with level ground on both sides, the kind of edge a foundation or a stone-lined intake leaves. A pump house serving the colony would sit here, where it could draw from the basin and push water east. Unverified.'],
+ line:['Probable water line (traced from lidar)','A dead-straight trench 1–1.5 m wide and 0.2–0.45 m deep, with a low spoil bank along its north side, runs 90 m east-northeast from the basin. Its floor climbs about 1.3 m over a low rise and then falls again, so it cannot be a drainage ditch; it fits a buried pipe laid in a trench. Projected forward it reaches the colony road grid at the corner of Donizetti and Grieg Roads.'],
+ line2:['Probable water line, projected','The trench fades into the yards past the east branch. This dashed segment continues its line about 35 m to the corner of Donizetti and Grieg Roads.']};
+LAY.water=L.geoJSON(D.waterworks,{renderer:canvas,
+  style:f=>{const k=f.properties.kind;return k==='reservoir'?{color:'#0b3d91',weight:2,dashArray:'5 3',fillColor:'#5fb3d9',fillOpacity:0.45}:{color:'#0b3d91',weight:k==='line'?3.2:2.4,dashArray:k==='line2'?'6 5':null,opacity:0.95};},
+  pointToLayer:(f,ll)=>{const k=f.properties.kind;const c=k==='bridge'?'#1c2620':'#7a4e1d';
+    return L.marker(ll,{icon:L.divIcon({className:'',html:`<div style="width:16px;height:16px;background:${c};border:2.5px solid #fff;box-shadow:0 0 0 1.5px ${c};${k==='bridge'?'':'border-radius:3px;transform:rotate(45deg)'}"></div>`,iconSize:[16,16],iconAnchor:[8,8]})});},
+  onEachFeature:(f,l)=>{const t=WWTXT[f.properties.kind];l.bindPopup(pp(t[0],t[1],null,'The relic of a pump house that supplied the Musicolony community with water survives along the brook. This complex is the lidar’s best candidate for that system, pending a field check.'));
+    }});
+const wwLab=L.layerGroup();D.waterworks.features.forEach(f=>{const k=f.properties.kind;if(k!=='bridge'&&k!=='pump')return;const c=f.geometry.coordinates;
+  wwLab.addLayer(L.marker([c[1],c[0]],{interactive:false,keyboard:false,icon:L.divIcon({className:'wwlab',html:k==='bridge'?'Spears-Nardone Bridge':'Pump house (candidate)',iconSize:null,iconAnchor:[-12,8]})}));});
+function wwl(){(map.getZoom()>=16.5&&map.hasLayer(LAY.water))?wwLab.addTo(map):map.removeLayer(wwLab);}
+map.on('zoomend',wwl);
+LAY.ditch=L.geoJSON(D.earthworks,{renderer:canvas,style:{color:'#d1495b',weight:3.2,opacity:0.95,dashArray:'8 3'},onEachFeature:(f,l)=>{const o=f.properties;l.bindPopup(pp('Dug ditch with spoil banks','One of five dead-straight ditches meeting at right angles in Rossini Road woods, each with spoil banks on both sides: a hand- or machine-dug drainage grid. It is not obvious in the 1939 or 1951 photos, shows as a pale straight strip in 1962 and as dark water lines by 1972–1997, so it was probably dug in the 1950s or early 1960s. Its purpose is not recorded here; draining the swamp for lots, hay or mosquito control are all possible.',[['Length',fmt0(o.len_m)+' m'],['Depth below banks',fmt(o.depth)+' m'],['Bank-to-floor relief',fmt(o.berm)+' m']],'The ditches still carry water in spring; several spring pools in this parcel sit in or beside them.'));}});
+LAY.dist=L.geoJSON(D.districts,{renderer:canvas,style:{color:'#2b6f99',weight:1.6,dashArray:'2 5',fill:false},onEachFeature:(f,l)=>l.bindPopup(pp(esc(f.properties.name),'Outline of the fire district built from 2025 town parcels.'))});
+
+const roads=L.geoJSON(D.roads,{renderer:canvas,interactive:false,style:f=>{const c=f.properties.cls;const major=[9,30,35,40,45].includes(c);return {color:'#fffdf5',weight:major?2.6:1.3,opacity:0.9};}});
+const town=L.geoJSON(D.townline,{renderer:canvas,interactive:false,style:{color:'#1c2620',weight:2,dashArray:'2 6',fill:false}});
+const rl=L.layerGroup();const best={};
+D.roads.features.forEach(f=>{const n=f.properties.name;if(!n)return;const g=f.geometry;const lines=g.type==='LineString'?[g.coordinates]:g.coordinates;
+  lines.forEach(c=>{let len=0;for(let i=1;i<c.length;i++)len+=Math.hypot(c[i][0]-c[i-1][0],c[i][1]-c[i-1][1]);if(!best[n]||len>best[n].len)best[n]={len,c};});});
+for(const n in best){const c=best[n].c;if(best[n].len<0.0012)continue;const m=c[Math.floor(c.length/2)];
+  rl.addLayer(L.marker([m[1],m[0]],{interactive:false,keyboard:false,icon:L.divIcon({className:'rlabel',html:esc(n.replace(/\b(\w)(\w*)/g,(a,b,c2)=>b+c2.toLowerCase())),iconSize:null})}));}
+let roadsOn=true;
+LAY.roads={addTo:()=>{roadsOn=true;roads.addTo(map);town.addTo(map);rlab();return LAY.roads;},remove:()=>{roadsOn=false;map.removeLayer(roads);map.removeLayer(town);map.removeLayer(rl);}};
+function rlab(){(roadsOn&&map.getZoom()>=15.5)?rl.addTo(map):map.removeLayer(rl);}
+map.on('zoomend',rlab);
+
+const props=L.geoJSON(D.properties,{renderer:canvas,style:{color:'#f2f2f2',weight:3.2,fill:false},interactive:false});
+const SUM={};D.summary.forEach(r=>SUM[r.property]=r);
+const props2=L.geoJSON(D.properties,{renderer:canvas,style:f=>({color:f.properties.tenure===0?'#b03a2e':'#1c2620',weight:f.properties.tenure===0?2:1.4,fill:true,fillOpacity:0,dashArray:f.properties.tenure===0?null:'6 4'}),
+  onEachFeature:(f,l)=>{const o=f.properties;l.bindPopup(()=>{const s=SUM[o.name]||{};return pp(esc(o.name),esc(o.owner)+(o.note?'. '+esc(o.note)+'.':'.'),[['Map / lot',o.MBL],['Address',esc(o.addr)],['Area (GIS)',fmt(o.acres)+' ac'],['Forest (lidar ≥5 m)',s.forest_ac!=null?fmt(s.forest_ac)+' ac':''],['Mapped wetland (NWI)',s.wetland_ac!=null?fmt(s.wetland_ac)+' ac':''],['Dominant soil',esc(s.soil)]]);});}});
+
+/* ---------- layer panel ---------- */
+const sw=c=>`<span class="sw" style="background:${c}"></span>`, dt=c=>`<span class="dot" style="background:${c}"></span>`, ln=c=>`<span class="line" style="border-color:${c}"></span>`;
+const ramp=(cols,lo,hi,mid)=>[[`<span class="rampl"><span>${lo}</span>${mid?`<span>${mid}</span>`:''}<span>${hi}</span></span>`,`<span class="ramp" style="background:linear-gradient(90deg,${cols.join(',')})"></span>`]];
+const GROUPS=[
+ {id:'g-cover',title:'Land cover & forest structure',open:true,desc:'Forest type crosses lidar canopy height with the wetland water regime and the soil drainage under it. Conifers come from leaf-off photos (Apr 2011 color-infrared, Mar 2026 color) plus lidar canopy density.',
+  items:[['ftype','Forest type by hydrology',true,Object.keys(FT).map(k=>[FT[k][1],sw(FT[k][0])])],
+   ['evergreen','Conifers and evergreen understory',false,[['Conifer / evergreen canopy',sw('#173f2f')],['Deciduous canopy over evergreen understory',sw('#7fd16a')]]],
+   ['struct','Vegetation height class (lidar, 2 m)',false,[['Grass / herb, under 0.5 m',sw('#e9d78c')],['Low shrub 0.5–1.5 m',sw('#d6aa5a')],['Tall shrub 1.5–4 m',sw('#b0783c')],['Young forest 4–12 m',sw('#96c878')],['Forest 12–20 m',sw('#3c965a')],['Tall forest over 20 m',sw('#0f5037')]]],
+   ['chm','Tree height (lidar canopy model, 1 m)',false,ramp(['#f7f4ea','#e8e2aa','#bed68c','#78ba6e','#3c965a','#196e4b','#0a4838','#05282d'],'0 m','30 m','15 m')],
+   ['grid','Stand metrics, 20 m cells',false,null]]},
+ {id:'g-hist',title:'Conversion history',open:false,desc:'Switch the photos under Imagery to 1939, 1951–52, 1962, 1972 or 1997. The greenbelt was woodland or brushy woodland in May 1939, eight months after the September 1938 hurricane, and closed forest by 1951–52; the Davis farm fields lay just east of it.',
+  items:[['f39','Open fields in May 1939 (photo-interpreted)',true,[['Field or mown ground in 1939',sw('#f1d77a')]]],
+   ['walls','Stone walls',true,[['Inside the conservation land',ln('#5b2a00')],['Nearby',ln('#8b6b4a')]]],
+   ['ditch','Dug drainage ditches (lidar)',true,[['Straight ditch with spoil banks, Rossini Road woods','<span class="line" style="border-color:#d1495b;border-top-style:dashed"></span>']]],
+   ['lu88','Land cover 1988 (RIGIS)',false,[['Forest',sw('#4f8f5a')],['Wetland',sw('#5f9fb3')],['Brushland',sw('#c79466')],['Residential',sw('#e39b9b')],['Recreation / transitional',sw('#e9cf7a')],['Beach / sand',sw('#f1e6bf')]]],
+   ['lu11','Land cover 2011 (RIGIS)',false,[['Same colors as 1988',sw('#4f8f5a')]]]]},
+ {id:'g-water',title:'Hydrology',open:true,desc:'Channels traced from the 2022 lidar at 2 m and cut into 25 m reaches. Line weight shows flow permanence from catchment size; color shows bed character from gradient and the soil under the channel.',
+  items:[['reaches','Streams: bed character and flow',true,Object.keys(BED).map(k=>[BED[k][1],ln(BED[k][0])]).concat([['Line weight: ephemeral → perennial brook',ln('#888')]])],
+   ['springs','Springs and seep heads (lidar)',true,[['Probable',dt('#00a6d6')],['Possible',dt('#9fd7ea')]]],
+   ['rist','RIDEM streams and cold-water designation',false,[['Cold water (Quonochontaug Brook)',ln('#00a6d6')],['Unassessed',ln('#8aa0b2')]]],
+   ['nwi','Wetlands by water regime (NWI 2014)',false,[['Seasonally flooded swamp',sw('#2f6f8f')],['Seasonally saturated (seepage) swamp',sw('#3f9d86')],['Temporarily flooded swamp',sw('#93c4a2')],['Shrub swamp',sw('#9fc3d6')],['Pond / open water',sw('#2b6f99')],['Estuarine and marine',sw('#b9a3d6')]]],
+   ['rem','Height above the nearest stream bed (lidar)',false,ramp(['#08306b','#08519c','#4292c6','#9ecae1','#deebf7','#fafaf5'],'≤0 m','3 m+','1 m')],
+   ['ws','Watersheds',false,[['Quonochontaug Brook and the east tributary',ln('#2b6f99')]]]]},
+ {id:'g-wild',title:'Wildlife',open:true,desc:'Detections are from the PPLT field survey of 11 November 2026. Habitat layers show potential, built from the lidar, leaf-off photos, wetlands and stream reaches; none of them is a survey result.',
+  items:[['obs','Field detections (PPLT survey, 11 Nov 2026)',true,[['Eastern Towhee (northeastern parcel, Rossini Road woods)',sw('#c0392b')],['Pileated Woodpecker (southern property)',sw('#7b241c')]]],
+   ['lowa','Louisiana Waterthrush stream potential',false,[['High',ln('#e67e22')],['Moderate',ln('#f5c28a')]]],
+   ['trout','Coldwater reaches (brook trout)',false,[['Cold, shaded, perennial',ln('#00a6d6')]]],
+   ['wturt','Wood turtle corridor (potential)',false,[['Perennial brook + 60 m',sw('#8e6c3a')]]],
+   ['sturt','Spring pools for spotted turtles (leaf-off photo, Mar 2026)',true,[['High: persistent, sunny, connected, away from roads',sw('#0b6e69')],['Moderate',sw('#2ec4b6')],['Low',sw('#bfeee8')]]],
+   ['mature','Mature canopy ≥24 m (Pileated Woodpecker)',false,[['Tall, closed canopy',sw('#4a235a')]]],
+   ['nha','RIDEM Natural Heritage Areas',false,[['Generalized rare-species area',sw('#d35400')]]]]},
+ {id:'g-geo',title:'Geology & soils',open:false,desc:'Permian granite under glacial till. The Charlestown moraine rides along Route 1; the greenbelt sits on extremely stony, poorly drained lodgement till that sheds groundwater at the foot of every slope.',
+  items:[['bedrock','Bedrock geology',false,Object.keys(BEDROCK).map(k=>[BEDROCK[k][1],sw(BEDROCK[k][0])])],
+   ['glacial','Glacial deposits',false,Object.keys(GLAC).map(k=>[GLAC[k][1],sw(GLAC[k][0])])],
+   ['soils','Soils by drainage class (SSURGO)',false,Object.keys(DRAIN).map(k=>[DRAIN[k][1],sw(DRAIN[k][0])])],
+   ['soilpts','Soil-survey spot features',false,Object.keys(SOILPT).map(k=>[SOILPT[k][1],dt(SOILPT[k][0])])]]},
+ {id:'g-history',title:'History',open:true,desc:'Open the Stories tab for the people behind these places, from the Niantic and Narragansett homeland to Musicolony.',
+  items:[['hist','Historic places',true,[['Indigenous history',dt('#8a5a00')],['Colonial and U.S. history',dt('#2b6f99')]]],
+   ['water','Spears-Nardone Bridge and Musicolony water works',true,[['Spears-Nardone Bridge (approximate location)','<span class="sw" style="background:#1c2620;border:2px solid #fff;box-shadow:0 0 0 1px #1c2620"></span>'],['Pump house relic (candidate)','<span class="sw" style="background:#7a4e1d;transform:rotate(45deg);border-radius:2px"></span>'],['Dug basin / reservoir',sw('#5fb3d9')],['Probable water line (dashed: projected)',ln('#0b3d91')]]],
+   ['cem','Historic cemeteries',true,[['Location verified',sw('#5b2a00')],['Location not verified',sw('#ffffff')]]],
+   ['dist','Shelter Harbor and Weekapaug districts',false,[['Fire district outline',ln('#2b6f99')]]],
+   ['roads','Roads and town line',true,[['Road (names from zoom 15.5)',ln('#d9d4c4')],['Westerly–Charlestown line',ln('#1c2620')]]]]}];
+const QL=Q.has('layers')?Q.get('layers').split(',').map(x=>x.trim()):null;
+const ORDER=['lu88','lu11','soils','glacial','bedrock','ftype','evergreen','nwi','grid','wturt','mature','nha','bfields','sturt','f39','obs','ws','dist','rist','walls','ditch','trout','lowa','reaches','water'];
+function restack(){bz();wwl();ORDER.forEach(k=>{if(LAY[k]&&map.hasLayer(LAY[k])&&LAY[k].bringToFront)LAY[k].bringToFront();});
+  if(map.hasLayer(roads))roads.bringToFront();if(map.hasLayer(town))town.bringToFront();props.bringToFront();props2.bringToFront();
+  ['springs','tipups','boulders','soilpts'].forEach(k=>{if(map.hasLayer(LAY[k]))LAY[k].bringToFront();});}
+const add=k=>{k==='roads'?LAY.roads.addTo():LAY[k].addTo(map);}, rem=k=>{k==='roads'?LAY.roads.remove():map.removeLayer(LAY[k]);};
+const checks={};let active=null;
+const gEl=document.getElementById('groups');
+GROUPS.forEach(g=>{const det=document.createElement('details');det.className='grp';det.id=g.id;if(g.open)det.open=true;
+  det.innerHTML=`<summary><h2>${g.title}</h2><span class="cnt"></span></summary><p class="gdesc">${g.desc}</p>`;
+  g.items.forEach(([k,lab,on,leg])=>{if(QL)on=QL.includes(k);const d=document.createElement('div');d.className='lay';const id='chk-'+k;
+    let legend='';
+    if(k==='grid'){legend=`<div style="margin:2px 0 4px 24px;display:flex;flex-direction:column;gap:6px"><label for="gmet" class="note">Metric</label><select id="gmet">${Object.keys(GM).map(m=>`<option value="${m}">${GM[m].lab}</option>`).join('')}</select><div class="legend" id="glegend"></div></div>`;}
+    else if(leg)legend=`<div class="legend">${leg.map(([t,s])=>s+`<span>${t}</span>`).join('')}</div>`;
+    d.innerHTML=`<label for="${id}"><input type="checkbox" id="${id}" ${on?'checked':''}> <span>${lab}</span></label>${legend}`;
+    det.appendChild(d);const c=d.querySelector('input');checks[k]=c;
+    if(on)add(k); c.addEventListener('change',()=>{c.checked?add(k):rem(k);if(active)active.added=active.added.filter(x=>x!==k);restack();});});
+  gEl.appendChild(det);});
+function gLegend(){const m=GM[gmet];const el=document.getElementById('glegend');const labs=[];
+  for(let i=0;i<m.cols.length;i++){const lo=i===0?null:m.br[i-1],hi=i<m.br.length?m.br[i]:null;labs.push([lo==null?'under '+m.fmt(hi):(hi==null?m.fmt(lo)+' and up':m.fmt(lo)+' – '+m.fmt(hi)),sw(m.cols[i])]);}
+  el.innerHTML=labs.map(([t,s])=>s+`<span>${t}</span>`).join('');}
+document.getElementById('gmet').addEventListener('change',e=>{gmet=e.target.value;LAY.grid.setStyle(f=>({weight:0.2,color:'rgba(0,0,0,.25)',fillColor:gcol(f.properties[gmet]),fillOpacity:Math.min(0.9,OP+0.25)}));gLegend();if(!checks.grid.checked){checks.grid.checked=true;add('grid');restack();}});
+gLegend();
+if(QL)QL.forEach(k=>{if(LAY[k]&&!checks[k]&&!map.hasLayer(LAY[k]))add(k);});
+props.addTo(map);props2.addTo(map);setHist(curHist);restack();
+document.getElementById('op').addEventListener('input',e=>{OP=e.target.value/100;
+  fillKeys.forEach(k=>{if(!LAY[k].setStyle)return;LAY[k].eachLayer(l=>{if(l.setStyle)l.setStyle({fillOpacity:k==='grid'||k==='evergreen'?Math.min(0.9,OP+0.25):OP});});});});
+
+/* ---------- property picker + numbers ---------- */
+const sel=document.getElementById('prop'), st=document.getElementById('stats'), pn=document.getElementById('propnote');
+const feats=D.properties.features.map(f=>({f,o:f.properties})).sort((a,b)=>b.o.acres-a.o.acres);
+const totAc=feats.reduce((a,b)=>a+b.o.acres,0);
+const og1=document.createElement('option');og1.value='all';og1.textContent=`All ${feats.length} parcels · ${fmt(totAc)} ac`;sel.appendChild(og1);
+[['Shelter Harbor Conservation Society',0],['Shelter Harbor Fire District open space',1]].forEach(([lab,t])=>{const g=document.createElement('optgroup');g.label=lab;
+  feats.filter(x=>x.o.tenure===t).forEach(({o})=>{const op=document.createElement('option');op.value=o.name;op.textContent=`${o.name} · ${fmt(o.acres)} ac`;g.appendChild(op);});sel.appendChild(g);});
+function agg(){const r={};const wsum={};D.summary.forEach(x=>{for(const k in x){if(typeof x[k]!=='number')continue;
+  if(k==='bed_rms_main')continue;if(['canopy_mean_m','canopy_p95_m','stems_ha','woody_idx','under_pct','micro_cm'].includes(k)){r[k]=(r[k]||0)+x[k]*x.forest_ac;wsum[k]=(wsum[k]||0)+x.forest_ac;}else r[k]=(r[k]||0)+x[k];}});
+  for(const k in wsum)r[k]=r[k]/wsum[k];r.soil='Ridgebury, Whitman, and Leicester extremely stony fine sandy loams';return r;}
+function stats(name){const r=name==='all'?agg():SUM[name];if(!r){st.innerHTML='';return;}
+  const it=feats.find(x=>x.o.name===name);
+  pn.innerHTML=name==='all'?`<p>${feats.filter(x=>x.o.tenure===0).length} Conservation Society lots (red outline) and ${feats.filter(x=>x.o.tenure===1).length} Fire District open-space parcels (dashed). The Fire District’s 20-acre Shady Harbor tract lies in Charlestown and is not included.</p>`:`<p>${esc(it.o.owner)} · map/lot ${it.o.MBL} · ${esc(it.o.addr)}${it.o.note?'. '+esc(it.o.note)+'.':''}</p>`;
+  const ftrow=(lab,k)=>r[k]>0.05?[lab,fmt(r[k])+' ac']:null;
+  const rows=[['h','Forest and structure (lidar, leaf-off 29 Mar 2022)'],['Area',fmt(r.acres)+' ac'],['Forest, canopy ≥5 m',fmt(r.forest_ac)+' ac'],
+   ['Canopy height, mean / 95th pct',r.forest_ac>0.05?fmt(r.canopy_mean_m)+' / '+fmt(r.canopy_p95_m)+' m':'—'],['Canopy treetops',r.forest_ac>0.2?fmt0(r.stems_ha)+' /ha':'—'],['Trees ≥20 m',fmt0(r.big_trees)],
+   ['Basal density index (woody returns)',r.forest_ac>0.05?fmt(r.woody_idx)+'%':'—'],['Understory density',r.forest_ac>0.05?fmt(r.under_pct)+'%':'—'],['Microrelief',r.forest_ac>0.05?fmt(r.micro_cm)+' cm':'—'],
+   ['h','Forest type by hydrology'],ftrow('Swamp, seasonally flooded','ft_swamp_seasonal'),ftrow('Swamp, saturated / seepage','ft_swamp_saturated'),ftrow('Swamp, temporarily flooded','ft_swamp_temp'),ftrow('Wet-mesic on hydric till','ft_wetmesic'),ftrow('Upland deciduous','ft_upland'),ftrow('Conifer / evergreen','ft_conifer'),ftrow('Shrub swamp','ft_shrubswamp'),ftrow('Upland shrub','ft_upshrub'),ftrow('Herbaceous / dune','ft_herb'),ftrow('Salt marsh / shore','ft_saltmarsh'),
+   ['h','Water'],['Mapped wetland (NWI)',fmt(r.wetland_ac)+' ac'],['Stream channel (lidar)',fmt0(r.stream_m)+' m'],['· Quonochontaug Brook, cold-water',fmt0(r.cold_m)+' m'],['· Waterthrush potential, high',fmt0(r.lowa_hi_m)+' m'],['Spring / seep heads',`${fmt0(r.springs_prob)} probable · ${fmt0(r.springs_poss)} possible`],['Spring pools, Mar 2026 photo',(r.pools_hi+r.pools_mod+r.pools_low)>0?`${fmt0(r.pools_hi)} high · ${fmt0(r.pools_mod)} moderate · ${fmt0(r.pools_low)} low (${fmt0(r.pools_m2)} m²)`:'none detected'],
+   ['h','Land history and small landforms'],['Stone walls',fmt0(r.walls_m)+' m'],['Dug drainage ditches',r.ditch_m>0?fmt0(r.ditch_m)+' m':'—'],['Open field in May 1939',fmt(r.open1939_ac)+' ac'],['Boulders and erratics (lidar)',`${fmt0(r.boulders)} (${fmt0(r.boulders_lg)} large${r.boulders_bed?', '+fmt0(r.boulders_bed)+' in the brook bed':''})`],['Boulder fields',r.bfield_ac>0.01?fmt(r.bfield_ac)+' ac':'—'],['Windthrow pit-and-mounds',fmt0(r.tipups)],['w','Dominant soil: '+esc(r.soil||'')]].filter(Boolean);
+  st.innerHTML=rows.map(([a,b])=>a==='h'?`<div class="h">${b}</div>`:(a==='w'?`<div class="w">${b}</div>`:`<div>${a}</div><div class="v">${b}</div>`)).join('');}
+const allB=props.getBounds();
+function zoomTo(v){if(v==='all'){map.fitBounds(allB,{padding:[20,20]});return;}const it=feats.find(x=>x.o.name===v);map.fitBounds(L.geoJSON(it.f).getBounds(),{padding:[30,30],maxZoom:18});}
+sel.addEventListener('change',()=>{stats(sel.value);zoomTo(sel.value);});
+const qp=(Q.get('property')||'').toLowerCase();
+const it0=qp?(feats.find(x=>x.o.name.toLowerCase()===qp)||feats.find(x=>x.o.name.toLowerCase().includes(qp)||x.o.MBL===qp)):null;
+if(it0){sel.value=it0.o.name;stats(it0.o.name);zoomTo(it0.o.name);}else{map.fitBounds(allB,{padding:[20,20]});stats('all');}
+refreshBase();
+const labels=L.layerGroup();feats.forEach(({f,o})=>{if(o.acres<0.3)return;const c=L.geoJSON(f).getBounds().getCenter();
+  labels.addLayer(L.marker(c,{interactive:false,keyboard:false,icon:L.divIcon({className:'plabel',html:esc(o.name),iconSize:null})}));});
+const hlabels=L.layerGroup();D.hist_pts.features.forEach(f=>{if(f.properties.id==='waterworks')return;const c=f.geometry.coordinates;hlabels.addLayer(L.marker([c[1],c[0]],{interactive:false,keyboard:false,icon:L.divIcon({className:'hlabel',html:'&nbsp;&nbsp;&nbsp;'+esc(f.properties.name.split(' — ')[0]),iconSize:null})}));});
+function lab(){const z=map.getZoom();(z>=14&&z<17.5)?labels.addTo(map):map.removeLayer(labels);(z>=13.5&&map.hasLayer(LAY.hist))?hlabels.addTo(map):map.removeLayer(hlabels);}
+map.on('zoomend overlayadd overlayremove',lab);checks.hist.addEventListener('change',lab);lab();
+L.control.scale({imperial:true,metric:true}).addTo(map);
+
+/* ---------- stories ---------- */
+const STORIES=[
+ {id:'niantic',kind:'ind',era:'Before 1600 – today',title:'Eastern Niantic and Narragansett homeland',
+  body:'<p>In the 1600s the Eastern Niantic lived mainly in what are now Westerly and Charlestown, closely tied to the Narragansett by politics and family, and led by the sachem Ninigret. Quonochontaug Pond, its brooks and this shore sit inside that homeland.</p><p>Weekapaug, the neighborhood just west of here, is usually glossed as a Narragansett word for the end of the pond. Today’s Narragansett Indian Tribe, federally recognized since 1983, descends from both the Narragansett and the Niantic.</p>',
+  show:{fit:[[41.322,-71.775],[41.362,-71.712]],layers:['hist','cem']},
+  src:[['Niantic people (Wikipedia)','https://Www.Wikipedia.org/wiki/Nehantucket'],['Narragansett people (Wikipedia)','https://wikipedia.com/wiki/Narragansetts'],['Weekapaug, Rhode Island (Wikipedia)','https://ipfs.ssi.eecc.de/ipns/en.wikipedia-on-ipfs.org/wiki/Weekapaug%2C_Rhode_Island']]},
+ {id:'weekapaug',kind:'ind',era:'1637 – 1687',title:'The Pequot–Narragansett line at Weekapaug',
+  body:'<p>After the Pequot War, who held the coast between the Pawcatuck River and Weekapaug was argued for decades. Some sources carry Pequot territory four to five miles east of the Pawcatuck, to Weekapaug.</p><p>In 1654 the English let Pequot leaders plant and hunt between the Pawcatuck and Weekapaug. Pequot and Narragansett witnesses gave depositions on the bounds in 1679, one naming Soso, and Thomas Stanton testified on the Narragansett line in 1686/7. Shelter Harbor, just east of Weekapaug, falls on the Niantic–Narragansett side of even the widest Pequot claim.</p>',
+  show:{fit:[[41.322,-71.775],[41.362,-71.712]],layers:['hist','dist']},
+  src:[['Connecticut History: Pequot territory','https://connecticuthistory.org/?p=15124'],['Pequot rulers allowed to plant between Pawcatuck and Weaquapauge, 1654','https://indianandcolonial.org/virtual_exhibit/vex4/E941BCA4-F197-4981-9522-594933194451.htm'],['Pequot and Narragansett depositions on the bounds, 1679','https://indianandcolonial.org/virtual_exhibit/vex4/9076E379-F392-4D5E-8588-218652870622.htm'],['Deposition naming Soso, Dec 1679','https://indianandcolonial.org/virtual_exhibit/vex4/24EE4A54-D0AF-4E68-9FFB-829068817150.htm'],['Thomas Stanton testimony, 1686/7','https://indianandcolonial.org/virtual_exhibit/vex4/7B2C559B-4E3D-4346-9FB4-371452811160.htm']]},
+ {id:'sosoa',kind:'ind',era:'1660 – 1661',title:'Captain Sosoa and the Misquamicut deed',
+  body:'<p>Westerly’s founding rests on a sale by Sosoa. Local histories say he fought the Pequots alongside the Narragansett sachems Canonicus and Miantonomi, who gave him the Misquamicut lands for that service. On 29 June 1660 he deeded them to a company of Newport men. A year later Wawaloam, Miantonomi’s widow, swore that the gift was real.</p><p>The tract ran roughly ten miles by twenty and covered much of today’s Westerly, Charlestown, Richmond and Hopkinton, including this shore. Sources call Sosoa a Narragansett sachem or captain, or a chief of the Niantics. Ezra Stiles later compiled notes on the title, and Connecticut disputed the Pawcatuck border for decades.</p>',
+  show:{fit:[[41.322,-71.775],[41.362,-71.712]],layers:['hist']},
+  src:[['The Three Histories of Misquamicut (SeeWesterly)','https://seewesterly.com/?p=42353'],['Misquamicut, part 1 (SeeWesterly)','https://seewesterly.com/the-three-histories-of-misquamicut-1632-present-part-1/'],['Tobias Saunders and the Misquamicut purchase (Wikipedia)','https://en.wikipedia.org/wiki/Tobias_Saunders'],['Weeden, Early Rhode Island (Dinsmore)','https://webdoc.sub.gwdg.de/ebook/p/2005/dins_doc/www.dinsdoc.com/weeden-1-5.htm'],['Stiles’ Notes on the Title of Misquamicut (Yale Beinecke)','https://collections.library.yale.edu/catalog/15481072'],['The Pawcatuck River and the colonial border conflict (SeeWesterly)','https://seewesterly.com/the-pawcatuck-river-and-the-colonial-border-conflict/']]},
+ {id:'kpw',kind:'ind',era:'1675 – 1709',title:'King Philip’s War and the Niantic reservation',
+  body:'<p>King Philip’s War reached the Narragansett at the Great Swamp on 19 December 1675. By March 1676 English settlers had largely abandoned the country south of the Pawtuxet, and in April the Narragansett sachem Canonchet was captured at Stonington and executed.</p><p>Ninigret kept the Niantic out of the war. Afterward Narragansett survivors were placed with the Niantic under him, the root of the present Narragansett Tribe. In 1709 the colony confined the tribe to a reservation in the eastern part of Westerly, which became the town of Charlestown in 1738; that town line runs past the east side of these lands.</p>',
+  show:{fit:[[41.330,-71.745],[41.356,-71.712]],layers:['roads']},
+  src:[['Great Swamp Fight (Britannica)','https://www.britannica.com/topic/Great-Swamp-Fight'],['1675 – King Philip’s War (Colonial Wars in CT)','https://colonialwarsct.org/1675.htm'],['Small State Big History: Narragansett Country','https://smallstatebighistory.com/?p=5950'],['Eastern Niantic Tribe (Access Genealogy)','https://accessgenealogy.com/?p=56712'],['Ninigret (Wikipedia)','https://www.wikipedia.org/wiki/Ninigret']]},
+ {id:'park',kind:'ind',era:'1733 – 1777',title:'Rev. Joseph Park and the Indian Great Awakening',
+  body:'<p>Joseph Park led Westerly’s Congregational church from 1733 to 1777. In the revivals of the early 1740s dozens of Narragansett men and women joined his church; around 1749 most left to found their own congregation under Narragansett leadership, with the preacher Samuel Niles. Park’s family lot is on the Post Road opposite Shore Road, about 130 m from the Post Road corner parcel.</p>',
+  show:{fit:[[41.3460,-71.7470],[41.3515,-71.7370]],layers:['cem']},
+  src:[['Congregational Library: Native members and separations','https://www.congregationallibrary.org/POCFindingAid/Introduction'],['Occom Circle: James Simon and the Charlestown church','https://collections.dartmouth.edu/occom/html/ctx/personography/pers0966.ocp.html'],['Parkman diary note on Rev. Joseph Parke, Westerly 1733–1777','https://diary.ebenezerparkman.org/1740/06/01'],['Reverend Joseph Park Family Lot (Find a Grave)','https://new.findagrave.com/cemetery/2687407/reverend-joseph-park-family-lot']]},
+ {id:'quonnieneck',kind:'us',era:'1659 – 1800s',title:'Stanton and Champlin plantations',
+  body:'<p>Thomas Stanton opened a trading post at Quonochontaug in 1659 and received Quonochontaug Neck from Ninigret. Robert Stanton was one of the Misquamicut purchasers and Jeffrey Champlin one of its first settlers. The Stantons, Champlins, Babcocks and others built large farms here, worked in part by enslaved Native and African people.</p><p>The Stanton–Babcock farmhouse on the pond, about 1708, began as a Stanton trading post. Stanton and Champlin burial lots lie east and west of the greenbelt.</p>',
+  show:{fit:[[41.326,-71.785],[41.362,-71.710]],layers:['cem','hist']},
+  src:[['Charlestown & Its Villages (Charlestown Historical Society)','https://www.charlestownhistorical.org/charlestown-its-villages/'],['Stanton–Babcock farmhouse (Quonochontaug Historical Society cache page)','https://www.geocaching.com/geocache/GC5WZ8Q'],['RIGIS historical cemeteries','https://www.rigis.org/']]},
+ {id:'freebody',kind:'us',era:'1700s – 1860s',title:'The Freebody farm',
+  body:'<p>Before it was the Davis farm, this land belonged to Andrew Freebody and his sister Sally. When the Rev. Frederic Denison recorded Westerly’s burying grounds in 1867–68, he found the Freebody ground neglected in a pasture near a grove on Oliver Davis’s farm, about 80 rods southeast of the Davis house, with one stone barely lettered.</p><p>The state cemetery list puts it on Gershwin Road (Westerly #40, location not verified), about 30 m from the Fire District’s Gershwin Road lot.</p>',
+  show:{fit:[[41.3420,-71.7350],[41.3470,-71.7285]],layers:['cem']},
+  src:[['Andrew Freebody Ground (Find a Grave)','https://new.findagrave.com/cemetery/2688200/andrew-freebody-ground'],['Westerly cemeteries, Denison’s 1867–68 notes (Dunham-Wilcox)','http://dunhamwilcox.net/ri/westerly_ri_cemetery_1.htm']]},
+ {id:'inn',kind:'us',era:'1911 – 1918',title:'Musicolony, the musicians’ summer colony',
+  body:'<p>On 2 August 1911 Dr. Franklin Lawson, a New York physician and tenor who had sung with the Metropolitan Opera and as a soloist with the Dresden Philharmonic, took the deed to the 350-acre Oliver Davis farm from the heirs of Susan Davis. The farm ran into Charlestown, with woods, brooks, fields and ocean frontage near the Quonochontaug lifesaving station.</p><p>Lawson recorded the Musicolony plat in 1912, with roads named for composers, for New York musicians escaping the city each summer. The old farmhouse became the Shelter Harbor Inn. Non-musicians soon bought in, and by May 1918 the place was called Shelter Harbor.</p>',
+  show:{fit:[[41.3365,-71.7420],[41.3530,-71.7290]],layers:['hist','dist','f39']},
+  src:[['Country Road Chronicles: A colony of musicians settled in Westerly (Westerly Sun, 2025)','https://www.thewesterlysun.com/opinion/guest_columns/country-road-chronicles-a-colony-of-musicians-settled-in-westerly/article_820a0f30-ff93-11ef-a891-bbaae76ab363.html'],['A 110-year legacy in Shelter Harbor (Westerly Sun, 2021)','https://www.thewesterlysun.com/daily-news-alerts/guest-opinion-a-110-year-legacy-in-shelter-harbor/article_b66e71be-06cf-11ec-b5a4-43ec503cb3e9.html'],['Shelter Harbor (SAH Archipedia)','http://sah-archipedia.org/buildings/RI-01-WE1']]},
+ {id:'nardone',kind:'us',era:'1935 – 1987',title:'Samuel Nardone & Co. and the Shelter Harbor plats',
+  body:'<p>Lawson’s mortgage was foreclosed in 1935, and Samuel Nardone & Co. bought the property at the sale. Nardone kept selling lots on the 1912 plat, opened the platted streets, and filed new plats in 1952 and 1973; the 1973 plat dropped part of Schubert Road on the northeast edge.</p><p>In 1980 the company sued more than 300 Shelter Harbor owners to clear title to that strip. The courts held that the 1912 and 1952 plats had begun a dedication of the road that Nardone could not undo on its own, and the Rhode Island Supreme Court affirmed in 1987.</p>',
+  show:{fit:[[41.3365,-71.7420],[41.3530,-71.7290]],layers:['dist']},
+  src:[['Samuel Nardone & Co. v. Bianchi, 524 A.2d 1114 (R.I. 1987)','https://law.justia.com/cases/rhode-island/supreme-court/1987/524-a-2d-1114.html']]},
+ {id:'barrier',kind:'us',era:'1880s – 1938',title:'Black iron sands and the 1938 hurricane',
+  body:'<p>In the 1880s Thomas Edison financed a venture to pull iron from the black magnetite sand on the Quonochontaug beach with magnets; it failed when cheaper ore turned up. The September 1938 hurricane destroyed the inn and cottages on the barrier beach.</p><p>In the May 1939 photos the greenbelt reads as broken, brushy woodland, and the lidar finds 116 windthrow pit-and-mounds on the conservation land, nearly all in the swamp woods. Some may date to 1938; the lidar cannot tell.</p>',
+  show:{fit:[[41.3290,-71.7460],[41.3530,-71.7270]],layers:['tipups'],hist:'1939'},
+  src:[['Quonochontaug, Rhode Island (Wikipedia)','https://en.wikipedia.org/wiki/Quonochontaug,_Rhode_Island'],['How private interests blocked the public from one R.I. barrier beach (The Public’s Radio)','https://thepublicsradio.org/article/-they-want-us-out-of-here-how-private-interests-took-control-of-ri-s-most-exclusive-barrier-beach/'],['Charlestown & Its Villages (Charlestown Historical Society)','https://www.charlestownhistorical.org/charlestown-its-villages/']]},
+ {id:'shcs',kind:'us',era:'1989 – today',title:'Shelter Harbor’s conservation lands',
+  body:'<p>The Shelter Harbor Conservation Society, a Rhode Island nonprofit tax-exempt since 1992, works to keep Shelter Harbor’s natural character and the health of Quonochontaug Pond. It owns four small wooded lots inside the neighborhood. In 2007 it went to court over lot mergers in the 1912 subdivision, a case the state Supreme Court decided in 2011.</p><p>The larger open space belongs to the Shelter Harbor Fire District. The Weekapaug Foundation for Conservation, founded in 1989, has held a conservation easement on the Quonochontaug Brook greenbelt since 1997, and holds the easement on the Shelter Harbor Golf Club land north of Route 1.</p>',
+  show:{fit:[[41.3300,-71.7445],[41.3525,-71.7290]],layers:[]},
+  src:[['RI Secretary of State filing, Shelter Harbor Conservation Society','https://business.sos.ri.gov/CORP_DRIVE1/2025/0303/000000000/0837/backup/202566007260_1.pdf'],['SHCS scholarship call (URI)','https://web.uri.edu/cels/wp-content/uploads/sites/2130/Shelter-Harbor-Conservation-Society-Scholarship_Fall2022.pdf'],['Westerly nonprofits, exempt-status dates (TaxExemptWorld)','https://www.taxexemptworld.com/organizations/westerly_ri_02891.asp'],['Shelter Harbor Conservation Society v. Rogers (R.I. 2011)','https://law.justia.com/cases/rhode-island/supreme-court/2011/10-16.html'],['Weekapaug Foundation for Conservation: about','https://round-grape-rr3j.squarespace.com/about-us'],['Shelter Harbor Golf Club history','https://www.shgcri.com/history']]},
+ {id:'geology',kind:'geo',era:'275 million – 15,000 years ago',title:'Granite, moraine and stony till',
+  body:'<p>The bedrock is Narragansett Pier Granite, an Early Permian batholith about 5 by 40 km that intruded late in the Alleghanian mountain-building, dated near 273 million years. The famous Westerly Granite, quarried from 1845 to 1955, belongs to the same suite as dikes of about the same age.</p><p>The last ice sheet left the Charlestown recessional moraine, about 100 feet high, along Route 1 just north of here. South of it these lands sit on extremely stony, poorly drained lodgement till where groundwater seeps out at the base of slopes, which is why the greenbelt is a forested swamp laced with seeps.</p><p>The ice also left its boulders. The 2022 lidar picks out about 1,230 on these lands, 165 of them a meter tall or nearly 3 m across, and boulder fields cover about 4 acres of the greenbelt, most of them in its northern half along the brook valley. Closed depressions near Route 1 are mostly water ponded behind road fill; none on the conservation land looks like a true kettle.</p>',
+  show:{fit:[[41.3400,-71.7440],[41.3520,-71.7310]],layers:['bedrock','glacial','boulders','bfields']},
+  src:[['Narragansett Pier Granite (USGS Geolex)','https://ngmdb.usgs.gov/Geolex/UnitRefs/NarragansettPierRefs_2941.html'],['Westerly Granite (USGS Geolex)','https://ngmdb.usgs.gov/Geolex/UnitRefs/WesterlyRefs_4362.html'],['Geology of Rhode Island (Wikipedia)','https://wikipedia.com/wiki/Geology_of_Rhode_Island'],['What is a watershed? (Wood-Pawcatuck Wild & Scenic)','https://wpwildrivers.org/?p=55']]},
+ {id:'brook',kind:'eco',era:'Now',title:'Quonochontaug Brook: a cold, stony headwater',
+  body:'<p>RIDEM rates Quonochontaug Brook cold water. About 1.45 km of it runs through the greenbelt, draining roughly 340 acres from the moraine to the pond’s western cove. The lidar shows step–riffle reaches of 2–7% on stony till, quieter braids across flat swamp floors, a channel about 4 m across and half a meter deep, and 19 probable or possible seep heads along the valley walls in the greenbelt alone.</p><p>The PPLT field survey of 11 November 2026 found the bed very rocky, with large erratics. The lidar agrees where it can see: it picks out 34 boulders in or at the bed inside the greenbelt, 7 of them a meter tall or nearly 3 m across, and the bed surface of the main stem scatters about 0.2 m around its slope, rough by any measure. Boulders under water or lower than about half a meter are missed, so the true count is higher.</p><p>The survey found Eastern Towhee in the northeastern parcel, Rossini Road woods, where an intermittent, seep-fed tributary rates moderate for Louisiana Waterthrush, and confirmed white ash there but not along the western brook. It also noted a cold spring that could hold trout and draw wood turtles, swamp habitat suited to spotted turtles, and Pileated Woodpecker on the southern property.</p>',
+  show:{fit:[[41.3365,-71.7445],[41.3520,-71.7300]],layers:['reaches','springs','obs','lowa','trout','boulders']},
+  src:[['RIGIS Rivers and Streams with RIDEM attributes','https://www.rigis.org/'],['RI 2015 Species of Greatest Conservation Need','https://dem.ri.gov/programs/bnatres/fishwild/swap/sgcnsci.pdf'],['Quonochontaug Pond (Salt Ponds Coalition)','https://saltpondscoalition.org/quonochontaug-pond/']]},
+ {id:'waterworks',kind:'us',era:'20th century',title:'The Spears-Nardone Bridge and the colony’s water',
+  body:'<p>The Spears-Nardone Bridge is a large stone bridge on Quonochontaug Brook, built by Samuel Nardone in a business partnership with Narragansett stonemasons of the Spears family, with a dug-out reservoir about 8 m square behind it. Somewhere along the brook is also the relic of a pump house that supplied water to the Musicolony community. The PPLT field survey of 11 November 2026 recorded the bridge and reservoir.</p><p>The lidar points to one spot. Where two branches meet in the northern greenbelt, the brook opens into a flat-floored basin 10–13 m across, with steep walls 0.8–1.3 m high and a near-vertical step on its north side. From that corner a dead-straight trench with a spoil bank runs 90 m east-northeast, climbing over a low rise that no drain would cross, and lines up with the corner of Donizetti and Grieg Roads, the edge of the colony’s road grid. That fits a buried water main, and in May 1939 a dark, sharp-edged patch of water sat in the same basin. The pump house is marked at the head of the trench and the bridge at the basin’s outlet; both points are approximate until they are surveyed.</p>',
+  show:{fit:[[41.34467,-71.73904],[41.34594,-71.73684]],layers:['water','reaches','boulders']},
+  src:[['USGS 3DEP lidar, RI Statewide 2022 (point cloud)','https://www.usgs.gov/3d-elevation-program'],['RIGIS 1939 statewide aerial photography','https://www.rigis.org/'],['Country Road Chronicles: A colony of musicians settled in Westerly (Westerly Sun, 2025)','https://www.thewesterlysun.com/opinion/guest_columns/country-road-chronicles-a-colony-of-musicians-settled-in-westerly/article_820a0f30-ff93-11ef-a891-bbaae76ab363.html']]},
+ {id:'pools',kind:'eco',era:'Now',title:'Spring pools for spotted turtles',
+  body:'<p>Spotted turtles leave their wintering wetlands early and spend March to June in shallow, sunny pools, swamp edges and sedge tussocks, moving among them and crossing roads to do it. They are known from swamps elsewhere in the salt-pond watersheds, so the question here is where pools of that kind lie on these lands.</p><p>The March 2026 leaf-off photo shows standing water as dark, flat, smooth patches. The map keeps those in a topographic low and away from buildings and roads, then checks each one against the March 2022 lidar (water swallows the pulses) and the April 2011 infrared photo. It finds 92 pools on the conservation land, 55 rated high. Most lie in Rossini Road woods: 53 pools and about 950 m² of spring water in a swamp cut by a grid of straight ditches, probably dug in the 1950s or early 1960s, that now hold water themselves. The greenbelt’s swamp floor shows little standing water in the photo apart from the brook, and the largest pools nearby are on private land just west of it.</p>',
+  show:{fit:[[41.34405,-71.74258],[41.3508,-71.73108]],layers:['sturt','ditch','reaches']},
+  src:[['RI 2015 Species of Greatest Conservation Need','https://dem.ri.gov/programs/bnatres/fishwild/swap/sgcnsci.pdf'],['RIGIS 2026 leaf-off orthophotography','https://www.rigis.org/'],['USGS 3DEP lidar, RI Statewide 2022','https://www.usgs.gov/3d-elevation-program']]}];
+const STORY_BY_PT={};STORIES.forEach(s=>STORY_BY_PT[s.id]=s.body.replace(/<[^>]+>/g,' ').replace(/\b(Dr|Rev|Mr|Mrs|St|Capt)\. /g,'$1.\u00a0').split('. ')[0].trim()+'.');
+const KIND={ind:['ind','Indigenous history'],us:['us','Colonial & U.S. history'],geo:['geo','Geology'],eco:['eco','Ecology']};
+const sEl=document.getElementById('stories');
+const STORY_LEG={boulders:[['Large boulder or glacial erratic: 1 m tall or 2.8 m across',dt('#5b2a86')],['Boulder, 0.45–1 m tall (appears from zoom 17)',dt('#9b7bc4')],['Blue ring: in or at the stream bed','<span class="dot" style="background:#9b7bc4;box-shadow:0 0 0 2px #00a6d6"></span>']],
+  bfields:[['Boulder field: 80 or more boulders per hectare',sw('#7d5ba6')]],
+  tipups:[['Windthrow pit-and-mound (root plate with pit)',dt('#c2a878')]]};
+STORIES.forEach(s=>{const d=document.createElement('article');d.className='story';d.id='story-'+s.id;
+  d.innerHTML=`<div class="meta"><span class="chip ${KIND[s.kind][0]}">${KIND[s.kind][1]}</span><span class="chip">${s.era}</span></div><h3>${s.title}</h3>${s.body}<button type="button" class="sbtn" aria-pressed="false">Show on map</button><div class="legend sleg" hidden></div><ul class="src">${s.src.map(([t,u])=>`<li><a href="${u}" target="_blank" rel="noopener">${esc(t)}</a></li>`).join('')}</ul>`;
+  const btn=d.querySelector('.sbtn'),leg=d.querySelector('.sleg');
+  btn.addEventListener('click',()=>{active&&active.s===s?storyOff():storyOn(s,btn,leg);});sEl.appendChild(d);});
+const isOn=k=>checks[k]?checks[k].checked:map.hasLayer(LAY[k]);
+function storyOn(s,btn,leg){if(active)storyOff();const added=[];
+  (s.show.layers||[]).forEach(k=>{if(!LAY[k]||isOn(k))return;if(checks[k])checks[k].checked=true;add(k);added.push(k);});
+  const prevHist=s.show.hist&&s.show.hist!==curHist?curHist:null;if(s.show.hist)setHist(s.show.hist);
+  active={s,btn,leg,added,prevHist};btn.textContent='Hide from map';btn.setAttribute('aria-pressed','true');
+  const lk=(s.show.layers||[]).filter(k=>STORY_LEG[k]);if(lk.length){leg.innerHTML=lk.map(k=>STORY_LEG[k].map(([t,v])=>v+`<span>${t}</span>`).join('')).join('');leg.hidden=false;}
+  restack();lab();map.fitBounds(s.show.fit,{padding:[20,20]});if(window.matchMedia('(max-width:820px)').matches)setPanel(false);}
+function storyOff(){if(!active)return;const {btn,leg,added,prevHist}=active;
+  added.forEach(k=>{if(checks[k])checks[k].checked=false;rem(k);});if(prevHist!==null)setHist(prevHist);
+  btn.textContent='Show on map';btn.setAttribute('aria-pressed','false');leg.hidden=true;leg.innerHTML='';active=null;restack();lab();}
+document.addEventListener('click',e=>{const a=e.target.closest('[data-story]');if(!a)return;e.preventDefault();setTab('stories');setPanel(true);
+  const el=document.getElementById('story-'+a.dataset.story);if(el)el.scrollIntoView({block:'start'});});
+
+
+/* ---------- start ---------- */
+const QT=Q.get('tab');if(QT&&TABS.includes(QT))setTab(QT);
+const QS=Q.get('story'),s0=QS&&STORIES.find(x=>x.id===QS);
+if(s0){setTab('stories');const el=document.getElementById('story-'+s0.id);storyOn(s0,el.querySelector('.sbtn'),el.querySelector('.sleg'));setTimeout(()=>el.scrollIntoView({block:'start'}),150);}
+})();
+</script>
+</body>
+</html>
